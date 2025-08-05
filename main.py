@@ -63,21 +63,72 @@ CZ = np.array([[1, 0, 0, 0],
 # |psi'> = |j>_i <j|_i |psi> / || |j>_i <j|_i |psi> ||
 # where |j>_0 = |j> x I x ... (identity on all other qubits)
 
-projectors=[np.array([[1,0],[0,0]]), np.array([[0,0],[0,1]]) ] # list containing the projectors |0><0| and |1><1|, for a z-basis projection
+def measure_qubit(state, qubit_position, basis='Z'):
+    """
+    Measures a single qubit in a multi-qubit state.
+    Args:
+        state: The state vector (e.g., |00⟩ = [1, 0, 0, 0]).
+        qubit_position: Index of the qubit to measure (0-based).
+        basis: 'Z' (computational) or 'X' (Hadamard).
+    Returns:
+        outcome (0 or 1), collapsed_state
+    """
+    n_qubits = int(np.log2(len(state)))
+    
+    # Switch to X-basis if needed
+    if basis == 'X':
+        H_total = 1
+        for i in range(n_qubits):
+            H_total = np.kron(H_total, H if i == qubit_position else I)
+        state = H_total @ state
+    
+    # Projectors |0⟩⟨0| and |1⟩⟨1| for the target qubit
+    P0 = np.kron(np.eye(2**qubit_position), zero.reshape(-1, 1) @ zero.reshape(1, -1))
+    P0 = np.kron(P0, np.eye(2**(n_qubits - qubit_position - 1)))
+    
+    P1 = np.kron(np.eye(2**qubit_position), one.reshape(-1, 1) @ one.reshape(1, -1))
+    P1 = np.kron(P1, np.eye(2**(n_qubits - qubit_position - 1)))
+    
+    # Probabilities
+    prob0 = (state.conj().T @ P0 @ state).real
+    prob1 = (state.conj().T @ P1 @ state).real
+    
+    # Normalize (in case of floating-point errors)
+    prob_sum = prob0 + prob1
+    prob0, prob1 = prob0 / prob_sum, prob1 / prob_sum
+    
+    # Random outcome
+    outcome = np.random.choice([0, 1], p=[prob0, prob1])
+    
+    # Collapse the state
+    collapsed_state = (P0 if outcome == 0 else P1) @ state
+    collapsed_state /= np.linalg.norm(collapsed_state)  # Normalize
+    
+    return outcome, collapsed_state
 
-def project(i,j,reg): # RETURN state with ith qubit of reg projected onto |j>
-    projected=np.tensordot(projectors[j],reg.psi,(1,i))
-    return np.moveaxis(projected,0,i)
+#%% Teleportation circuit
+alice_state = plusi  # State to teleport (|+⟩)
+state = np.kron(alice_state, bell00)  # Combined state (|+⟩ ⊗ |Φ⁺⟩)
 
-from scipy.linalg import norm
+# Step 1: Alice applies CNOT and H
+state = np.kron(np.kron(H, I), I) @ np.kron(CNOT,I) @ state  # (Simplified; adjust indices as needed)
 
-def measure(i,reg): # Change reg.psi into post-measurement state w/ correct probability. Return measurement value as int
-    projected=project(i,0,reg) 
-    norm_projected=norm(projected.flatten()) 
-    if np.random.random()<norm_projected**2: # Sample according to probability distribution
-        reg.psi=projected/norm_projected
-        return 0
-    else:
-        projected=project(i,1,reg)
-        reg.psi=projected/norm(projected)
-        return 1
+# Step 2: Measure Alice's qubits
+m1, state = measure_qubit(state, qubit_position=0)
+m2, state = measure_qubit(state, qubit_position=1)
+
+# Step 3: Bob corrects his qubit (position 2)
+if m1 == 1:
+    state = np.kron(np.kron(I, I), Z) @ state
+    print("Bob applies Z gate")
+if m2 == 1:
+    state = np.kron(np.kron(I, I), X) @ state
+    print("Bob applies X gate")
+
+# Verify Bob's state matches Alice's original |+⟩
+#bob_state = state.reshape(2, 2)[:, 0]  # Marginalize Alice's qubits
+#print("Bob's state:", bob_state)
+
+print(state)
+
+# %%
