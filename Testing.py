@@ -22,12 +22,18 @@ CNOT_tensor=np.reshape(CNOT_matrix, (2,2,2,2))
 
 class Reg: 
     def __init__(self,n):
+        #Defininig numebr of qubits we want
         self.n=n
+        # In vector form. Initialized to |0> states
         self.psi=np.zeros((2,)*n) 
         self.psi[(0,)*n]=1
         
 def H(i,reg): 
+    # Applying the Hadamard gate on the i-th qubit
+    # So reg.psi would look like [0,1], ..., [1/sqrt(2), 1/sqrt(2)], ...
     reg.psi=np.tensordot(H_matrix,reg.psi,(1,i)) 
+
+    # Reshaping the tensor to move the i-th qubit to the front
     reg.psi=np.moveaxis(reg.psi,0,i)
 
 def X(i,reg):
@@ -66,6 +72,8 @@ def measure(i,reg):
 # Example of final usage: create uniform superposition
 reg=Reg(3)
 
+
+'''
 H(2, reg)  # Alice qubit
 
 #initializing bell state
@@ -85,4 +93,4 @@ if m2 == 1:
 
 # Final state
 state = reg.psi.flatten()
-print("Final state after teleportation:", state)
+print("Final state after teleportation:", state)'''
