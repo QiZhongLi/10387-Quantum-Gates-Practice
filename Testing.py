@@ -68,12 +68,34 @@ def measure(i,reg):
         projected=project(i,1,reg)
         reg.psi=projected/norm(projected)
         return 1
+
+def partial_trace(psi, keep_qubits, n_qubits):
+    """
+    Trace out all qubits except those in keep_qubits
+    psi: state vector (already flattened)
+    keep_qubits: list of qubit indices to keep (0-based)
+    n_qubits: total number of qubits in original system
+    """
+    # Reshape to tensor with n_qubits dimensions
+    psi_tensor = psi.reshape([2]*n_qubits)
+    
+    # Sum over all axes NOT in keep_qubits
+    trace_axes = [i for i in range(n_qubits) if i not in keep_qubits]
+    rho = np.tensordot(psi_tensor, psi_tensor.conj(), axes=(trace_axes, trace_axes))
+    
+    # Reorder remaining axes if needed
+    if len(keep_qubits) > 1:
+        new_order = [keep_qubits.index(i) for i in sorted(keep_qubits)]
+        rho = np.moveaxis(rho, range(len(keep_qubits)), new_order)
+    
+    return rho.reshape(2**len(keep_qubits), 2**len(keep_qubits))
     
 # Example of final usage: create uniform superposition
 reg=Reg(3)
 
-
-'''
+# 2 - Alice qubit
+# 1 - Alice's Bell qubit
+# 0 - Bob's Bell qubit
 H(2, reg)  # Alice qubit
 
 #initializing bell state
@@ -87,10 +109,17 @@ m1 = measure(2, reg)
 m2 = measure(1, reg)
 
 if m1 == 1:
-    Z(0, reg)
+    Z(3, reg)
 if m2 == 1:
-    X(0, reg)
+    X(3, reg)
 
 # Final state
 state = reg.psi.flatten()
-print("Final state after teleportation:", state)'''
+
+# Tracing out other qubits to get Bob's state
+bob_density_matrix = partial_trace(state, keep_qubits=[0], n_qubits=3)
+bob_state = bob_density_matrix[:, 0]
+bob_state /= np.linalg.norm(bob_state)
+
+
+print("Final state after teleportation:", bob_state)
