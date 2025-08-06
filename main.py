@@ -79,6 +79,8 @@ def quantum_teleportation(alice):
     state = np.kron(CNOT, np.eye(2)) @ state
     # Hadamard on Alice's state qubit (0)
     state = np.kron(H, np.eye(4)) @ state
+
+    #print("State after Alice's operations:", state)
     
     # Measuring the qubits
     # Finding the probabilities of the outcomes
@@ -88,7 +90,7 @@ def quantum_teleportation(alice):
 
     collapsed = np.zeros_like(state)
     collapsed[outcome] = 1.0
-    print("Collapsed state after measurement:", collapsed)
+    #print("Collapsed state after measurement:", collapsed)
 
     bits = format(outcome, '03b')  # Convert outcome to 3-bit binary string
     a, b, c = int(bits[0]), int(bits[1]), int(bits[2])
@@ -97,20 +99,20 @@ def quantum_teleportation(alice):
 
     bob_qubit = None
     if a == 1:
-        state = np.kron(np.eye(4), Z) @ collapsed
+        state = np.kron(np.eye(4), Z) @ state
         print("Bob applied Z gate on his qubit.")
     if b == 1:
-        state = np.kron(np.eye(4), X) @ collapsed
+        state = np.kron(np.eye(4), X) @ state
         print("Bob applied X gate on his qubit.")
     if a ==0 and b == 0:
-        state = collapsed
+        state = state
         print("Bob did not apply any gate on his qubit.")
     
     print("State after Bob's corrections:", state)
 
     # Reshape state to tensor form 
     state_tensor = state.reshape((2, 2, 2))
-    print(state_tensor)
+    #print(state_tensor)
     # Trace out Alice's qubits by summing over their dimensions
     bob_state = np.sum(state_tensor, axis=(0,1))
     bob_state /= np.linalg.norm(bob_state)  # Normalize
