@@ -1,5 +1,7 @@
 import numpy as np
 
+#%% 1 qubit stuff
+
 # Defining the bits as numpy arrays
 zero = np.array([1, 0])  # |0>
 one = np.array([0, 1])  # |1>
@@ -22,8 +24,7 @@ I = np.array([[1, 0], [0, 1]])  # Identity gate
 # So running a circuit with H, T, X with a qubit initialized to |0> will result in:
 # print(X @ T @ H @ zero)
 
-
-#%% 2 qubit 
+#%% 2 qubits stuff
 zerozero = np.kron(zero, zero)  # |00>
 zeroone = np.kron(zero, one)  # |01>
 onezero = np.kron(one, zero)  # |10>

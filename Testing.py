@@ -3,15 +3,17 @@ from scipy.linalg import norm
 
 
 # Playing with Joris Kattemölle's code and see how his stuff works
+# End of the day, we're still working with ndarrays
+
 H_matrix=1/np.sqrt(2)*np.array([[1, 1],
                                 [1,-1]])
 
-X = np.array([[0, 1], [1, 0]])  # Pauli-X gate
-Z = np.array([[1, 0], [0, -1]])  # Pauli-Z gate
-Y = np.array([[0, -1j], [1j, 0]])  # Pauli-Y gate
-T = np.array([[1, 0], [0, np.exp(1j * np.pi / 4)]])  # T gate
-S = np.array([[1, 0], [0, 1j]])  # S gate
-I = np.array([[1, 0], [0, 1]])  # Identity gate
+X_matrix = np.array([[0, 1], [1, 0]])  # Pauli-X gate
+Z_matrix = np.array([[1, 0], [0, -1]])  # Pauli-Z gate
+Y_matrix = np.array([[0, -1j], [1j, 0]])  # Pauli-Y gate
+T_matrix = np.array([[1, 0], [0, np.exp(1j * np.pi / 4)]])  # T gate
+S_matrix = np.array([[1, 0], [0, 1j]])  # S gate
+I_matrix = np.array([[1, 0], [0, 1]])  # Identity gate
 
 CNOT_matrix=np.array([[1,0,0,0],
                       [0,1,0,0],
@@ -19,6 +21,16 @@ CNOT_matrix=np.array([[1,0,0,0],
                       [0,0,1,0]])
 
 CNOT_tensor=np.reshape(CNOT_matrix, (2,2,2,2))
+
+CZ_tensor = np.array([[1, 0, 0, 0],
+                      [0, 1, 0, 0],
+                      [0, 0, 1, 0],
+                      [0, 0, 0, -1]]).reshape(2, 2, 2, 2)
+
+swap_tensor = np.array([[1, 0, 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 1, 0, 0],
+                        [0, 0, 0, 1]]).reshape(2, 2, 2, 2)
 
 class Reg: 
     def __init__(self,n):
@@ -34,23 +46,47 @@ def H(i,reg):
     reg.psi=np.tensordot(H_matrix,reg.psi,(1,i)) 
 
     # Reshaping the tensor to move the i-th qubit to the front
+    # From what I can test, it doesn't seem to do anything
+    # But I'm scare of removing it so I'll keep it for now
     reg.psi=np.moveaxis(reg.psi,0,i)
 
 def X(i,reg):
-    reg.psi=np.tensordot(X,reg.psi,(1,i)) 
+    reg.psi=np.tensordot(X_matrix,reg.psi,(1,i)) 
     reg.psi=np.moveaxis(reg.psi,0,i)
 
 def Z(i,reg):
-    reg.psi=np.tensordot(Z,reg.psi,(1,i)) 
+    reg.psi=np.tensordot(Z_matrix,reg.psi,(1,i)) 
     reg.psi=np.moveaxis(reg.psi,0,i)
 
 def Y(i,reg):
-    reg.psi=np.tensordot(Y,reg.psi,(1,i)) 
+    reg.psi=np.tensordot(Y_matrix,reg.psi,(1,i)) 
     reg.psi=np.moveaxis(reg.psi,0,i)
 
 def CNOT(control, target, reg):
     reg.psi=np.tensordot(CNOT_tensor, reg.psi, ((2,3),(control, target))) 
     reg.psi=np.moveaxis(reg.psi,(0,1),(control,target))   
+
+def CZ(control, target, reg):
+    reg.psi = np.tensordot(CZ_tensor, reg.psi, ((2,3),(control, target))) 
+    reg.psi = np.moveaxis(reg.psi,(0,1),(control,target))
+
+def SWAP(i,j,reg):
+    reg.psi = np.tensordot(swap_tensor, reg.psi, ((2, 3), (i, j)))
+    reg.psi = np.moveaxis(reg.psi, (0, 1), (i, j))
+
+def CZZ(theta, control, target, reg):
+    """
+    Apply a controlled rotation around the Z axis.
+    theta: angle of rotation
+    control: index of the control qubit
+    target: index of the target qubit
+    """
+    RZ_matrix = np.array([[1, 0, 0, 0],
+                      [0, 1, 0, 0],
+                      [0, 0, 1, 0],
+                      [0, 0, 0, np.exp(1j*theta)]]).reshape(2, 2, 2, 2)
+    reg.psi = np.tensordot(RZ_matrix, reg.psi, (1, target))
+    reg.psi = np.moveaxis(reg.psi, 0, target)
 
 def measure(i,reg): 
     projectors=[ np.array([[1,0],[0,0]]), np.array([[0,0],[0,1]]) ] 
@@ -89,9 +125,11 @@ def partial_trace(psi, keep_qubits, n_qubits):
         rho = np.moveaxis(rho, range(len(keep_qubits)), new_order)
     
     return rho.reshape(2**len(keep_qubits), 2**len(keep_qubits))
-    
-# Example of final usage: create uniform superposition
-reg=Reg(3)
+
+
+
+#%% Quantum teleportation circuit
+'''reg=Reg(3)
 
 # 2 - Alice qubit
 # 1 - Alice's Bell qubit
@@ -108,10 +146,11 @@ H(2, reg)
 m1 = measure(2, reg)
 m2 = measure(1, reg)
 
+# Bob applies gates based on outcomes
 if m1 == 1:
-    Z(3, reg)
+    Z(0, reg)
 if m2 == 1:
-    X(3, reg)
+    X(0, reg)
 
 # Final state
 state = reg.psi.flatten()
@@ -122,4 +161,7 @@ bob_state = bob_density_matrix[:, 0]
 bob_state /= np.linalg.norm(bob_state)
 
 
-print("Final state after teleportation:", bob_state)
+print("Final state after teleportation:", bob_state)'''
+
+#%% Quantum Fourier Transform (QFT)
+reg = Reg(3)
